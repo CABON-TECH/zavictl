@@ -14,6 +14,35 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [0.2.0] — 2026-09-23
+
+### Added
+
+#### Provider Adapters & Integrations
+- **Kubernetes Adapter**: Added native `kubernetes` provider with `runtime` capabilities (`scale`, `restart`, `logs`, `inspect`).
+- **Vault Adapter Enhancement**: Added dynamic JSON unmarshalling to seamlessly pipe CLI intent payloads into Vault's logical API.
+- **GitHub Adapter Enhancement**: Added `security.scan` capability to trigger remote SAST/SCA security pipelines.
+
+#### CLI Command Suites (100% Spec Completion)
+- `zavictl build` — Manage build lifecycles (`start`, `list`, `show`, `logs`, `cancel`, `retry`, `artifacts`).
+- `zavictl artifact` — Manage binaries and images (`publish`, `promote`, `verify`, `retention`, `list`, `show`).
+- `zavictl security` — Orchestrate security posture (`scan`, `findings`, `approve`).
+- `zavictl runtime` — Bridge the gap to Kubernetes clusters (`scale`, `restart`, `logs`, `exec`, `health`, `inspect`, `list`).
+- `zavictl db` (or `database`) — Infrastructure intents for databases (`provision`, `migrate`, `backup`, `restore`, `failover`, `list`).
+- `zavictl secret` — Unified secret management wired to Vault (`set`, `list`, `inspect`, `delete`, `rotate`, `inject`).
+- `zavictl observe` (Telemetry) — Extended with `metrics` (wired to Prometheus), `logs`, `traces`, and `dashboards`.
+- `zavictl alert` & `zavictl incident` — Declare incidents and manage firing alerts (`create`, `list`, `show`, `acknowledge`, `resolve`).
+- Completed all outstanding missing subcommands for `project`, `service`, `environment`, `repo`, `deploy`, `infra`, and `policy` domains.
+
+#### Core CLI Framework
+- **Universal Global Flags**: Completely wired in `--environment`, `--project`, `--dry-run`, `--yes`, `--timeout`, and `--output` across the entire Cobra command tree.
+- Comprehensive `README.md` covering the architecture and every single command available in the platform.
+
+### Fixed
+- Fixed an issue in the GitHub adapter where an extraneous debug log (`Header applied: true`) was polluting standard terminal output during workflow dispatches.
+
+---
+
 ## [0.1.0] — 2026-09-23
 
 ### Added
