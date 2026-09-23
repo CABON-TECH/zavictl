@@ -17,11 +17,14 @@ import (
 func TestGitHubProviderCapabilities(t *testing.T) {
 	p := NewProvider(nil)
 	caps := p.Capabilities()
-	if len(caps) != 2 {
-		t.Fatalf("Expected 2 capabilities, got %d", len(caps))
+	if len(caps) != 3 {
+		t.Fatalf("Expected 3 capabilities, got %d", len(caps))
 	}
 	if caps[0].Domain != "sourcecontrol" {
 		t.Errorf("Expected sourcecontrol, got %s", caps[0].Domain)
+	}
+	if caps[2].Domain != "security" {
+		t.Errorf("Expected security, got %s", caps[2].Domain)
 	}
 }
 
