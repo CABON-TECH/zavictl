@@ -28,7 +28,12 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 		return nil, err
 	}
 
-	return &SQLiteStore{db: db}, nil
+	store := &SQLiteStore{db: db}
+	if err := store.ensureEventsTable(); err != nil {
+		return nil, err
+	}
+
+	return store, nil
 }
 
 func initSchema(db *sql.DB) error {

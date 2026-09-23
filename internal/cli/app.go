@@ -51,6 +51,11 @@ func BootstrapApp() (*App, error) {
 
 	bus := events.NewAsyncEventBus()
 
+	// Wire a persistent audit writer: every event published to the bus is saved to SQLite
+	bus.Subscribe("*", func(ev events.Event) {
+		store.SaveEvent(context.Background(), ev)
+	})
+
 	fetchFunc := func(ctx context.Context, ref credentials.CredentialRef) (string, time.Time, error) {
 		// Read from SQLite state store using List
 		records, err := store.List(ctx, "Credential")
