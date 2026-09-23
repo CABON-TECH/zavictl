@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"zavictl/pkg/provider"
@@ -67,9 +68,19 @@ func (c *vaultConnection) write(ctx context.Context, op provider.Operation) (pro
 	if !ok {
 		return provider.Result{}, fmt.Errorf("missing parameter 'path'")
 	}
-	data, ok := op.Parameters["data"].(map[string]interface{})
-	if !ok {
-		return provider.Result{}, fmt.Errorf("missing parameter 'data'")
+
+	var data map[string]interface{}
+
+	switch v := op.Parameters["data"].(type) {
+	case map[string]interface{}:
+		data = v
+	case string:
+
+		if err := json.Unmarshal([]byte(v), &data); err != nil {
+			return provider.Result{}, fmt.Errorf("failed to parse data as JSON map: %v", err)
+		}
+	default:
+		return provider.Result{}, fmt.Errorf("invalid type for parameter 'data'")
 	}
 
 	secret, err := c.client.Logical().Write(path, data)
