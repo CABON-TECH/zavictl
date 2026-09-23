@@ -52,7 +52,19 @@ func BootstrapApp() (*App, error) {
 	bus := events.NewAsyncEventBus()
 
 	fetchFunc := func(ctx context.Context, ref credentials.CredentialRef) (string, time.Time, error) {
-		return "dummy_token", time.Now().Add(1 * time.Hour), nil
+		// Read from SQLite state store using List
+		records, err := store.List(ctx, "Credential")
+		if err != nil {
+			return "", time.Time{}, fmt.Errorf("failed to list credentials: %v", err)
+		}
+		
+		for _, rec := range records {
+			if rec.Data["provider"].(string) == ref.Provider {
+				return rec.Data["token"].(string), time.Now().Add(24 * time.Hour), nil
+			}
+		}
+		
+		return "", time.Time{}, fmt.Errorf("no credential found for provider %s, please run 'zavictl auth login %s'", ref.Provider, ref.Provider)
 	}
 	resolver := credentials.NewResolver(bus, fetchFunc)
 

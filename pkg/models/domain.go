@@ -80,3 +80,27 @@ func (s *Service) Validate() error {
 	}
 	return nil
 }
+
+// Credential represents an authentication token for a provider.
+type Credential struct {
+	Resource
+	Provider string `json:"provider"`
+	Token    string `json:"token"`
+}
+
+func NewCredential(provider, token, owner string) *Credential {
+	now := time.Now().UTC()
+	return &Credential{
+		Resource: Resource{
+			ID:          GenerateID(),
+			Kind:        "Credential",
+			Name:        fmt.Sprintf("%s-default", provider),
+			Owner:       owner,
+			CreatedAt:   now,
+			UpdatedAt:   now,
+			Status:      "active",
+		},
+		Provider: provider,
+		Token:    token,
+	}
+}
