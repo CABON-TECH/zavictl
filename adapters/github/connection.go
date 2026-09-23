@@ -21,6 +21,16 @@ func (c *githubConnection) Execute(ctx context.Context, op provider.Operation) (
 		return c.readRepository(ctx, op)
 	case "cicd.trigger_workflow":
 		return c.triggerWorkflow(ctx, op)
+	case "security.scan":
+		// For now, map security.scan to triggering a security workflow file
+		// In a real implementation this might call the Code Scanning APIs
+		if _, ok := op.Parameters["workflow_id"]; !ok {
+			op.Parameters["workflow_id"] = "security.yaml"
+		}
+		if _, ok := op.Parameters["ref"]; !ok {
+			op.Parameters["ref"] = "main"
+		}
+		return c.triggerWorkflow(ctx, op)
 	default:
 		return provider.Result{}, &provider.PlatformError{
 			ErrorCode: "UNSUPPORTED_OPERATION",

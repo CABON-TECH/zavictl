@@ -41,6 +41,10 @@ func (p *githubProvider) Capabilities() []provider.Capability {
 			Domain:     "cicd",
 			Operations: []string{"trigger_workflow"},
 		},
+		{
+			Domain:     "security",
+			Operations: []string{"scan"},
+		},
 	}
 }
 
