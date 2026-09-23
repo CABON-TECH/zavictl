@@ -27,7 +27,6 @@ type engineImpl struct {
 	
 	mu       sync.RWMutex
 	active   map[ExecutionID]context.CancelFunc
-	signals  map[string]chan struct{}
 }
 
 func NewEngine(store state.StateStore, runner StepRunner, pe policy.PolicyEngine) ExecutionEngine {
@@ -36,7 +35,6 @@ func NewEngine(store state.StateStore, runner StepRunner, pe policy.PolicyEngine
 		runner:  runner,
 		policy:  pe,
 		active:  make(map[ExecutionID]context.CancelFunc),
-		signals: make(map[string]chan struct{}),
 	}
 }
 
@@ -103,21 +101,12 @@ func (e *engineImpl) Resume(ctx context.Context, id ExecutionID) error {
 }
 
 func (e *engineImpl) SignalApproval(ctx context.Context, id ExecutionID, stepName string) error {
-	signalKey := fmt.Sprintf("%s-%s", id, stepName)
-	
-	e.mu.Lock()
-	ch, exists := e.signals[signalKey]
-	e.mu.Unlock()
-
-	if !exists {
+	st, exists := e.getStepState(ctx, id, stepName)
+	if !exists || st.Status != "awaiting_approval" {
 		return fmt.Errorf("no pending approval found for step %s", stepName)
 	}
 
-	select {
-	case ch <- struct{}{}:
-	default:
-	}
-
+	e.saveStepState(ctx, id, stepName, StepState{Status: "approved"})
 	return nil
 }
 
@@ -344,24 +333,18 @@ func (e *engineImpl) runWorkflow(ctx context.Context, id ExecutionID, wf workflo
 				step := stepsByName[stepName]
 				
 				if step.Approval != nil && step.Approval.Required {
-					signalKey := fmt.Sprintf("%s-%s", id, stepName)
-					ch := make(chan struct{}, 1)
-					
-					e.mu.Lock()
-					e.signals[signalKey] = ch
-					e.mu.Unlock()
-					
 					e.saveStepState(ctx, id, stepName, StepState{Status: "awaiting_approval"})
 					
-					select {
-					case <-ctx.Done():
-						return
-					case <-ch:
+					for {
+						if ctx.Err() != nil {
+							return
+						}
+						st, exists := e.getStepState(ctx, id, stepName)
+						if exists && st.Status == "approved" {
+							break
+						}
+						time.Sleep(1 * time.Second)
 					}
-					
-					e.mu.Lock()
-					delete(e.signals, signalKey)
-					e.mu.Unlock()
 				}
 				
 				e.saveStepState(ctx, id, stepName, StepState{Status: "running"})
