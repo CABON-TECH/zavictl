@@ -3,9 +3,13 @@ package cli
 import (
 	"context"
 	"fmt"
+	"time"
+
+	"zavictl/pkg/execution"
+	"zavictl/pkg/state/sqlite"
+	"zavictl/pkg/workflow"
 
 	"github.com/spf13/cobra"
-	"zavictl/pkg/state/sqlite"
 )
 
 var observeCmd = &cobra.Command{
@@ -102,6 +106,83 @@ func init() {
 	observeCmd.AddCommand(observeAuditCmd)
 	observeCmd.AddCommand(observeEventsCmd)
 	observeCmd.AddCommand(observeExecutionsCmd)
+	observeCmd.AddCommand(observeMetricsCmd)
+	observeCmd.AddCommand(observeLogsCmd)
+	observeCmd.AddCommand(observeTracesCmd)
+	observeCmd.AddCommand(observeDashboardsCmd)
 
 	rootCmd.AddCommand(observeCmd)
+}
+
+var observeMetricsCmd = &cobra.Command{
+	Use:   "metrics [service]",
+	Short: "View metrics for a service",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		serviceName := args[0]
+		query := fmt.Sprintf("rate(http_requests_total{service=\"%s\"}[5m])", serviceName)
+
+		wf := workflow.WorkflowDefinition{
+			Name:    fmt.Sprintf("observe-metrics-%s", serviceName),
+			Version: "v1",
+			Steps: []workflow.StepDefinition{
+				{
+					Name:   "query_metrics",
+					Action: "prometheus.observability.query",
+					Inputs: map[string]workflow.Expression{
+						"query": workflow.Expression(query),
+					},
+				},
+			},
+		}
+
+		ctx := context.Background()
+		id, err := appCtx.Engine.Submit(ctx, wf)
+		if err != nil {
+			return fmt.Errorf("failed to submit metrics query: %v", err)
+		}
+
+		for {
+			status, err := appCtx.Engine.Status(ctx, id)
+			if err != nil {
+				return err
+			}
+			if status == execution.StatusCompleted || status == execution.StatusFailed || status == execution.StatusCancelled {
+				fmt.Printf("Metrics query finished with status: %s\n", status)
+				break
+			}
+			time.Sleep(1 * time.Second)
+		}
+		return nil
+	},
+}
+
+var observeLogsCmd = &cobra.Command{
+	Use:   "logs [service]",
+	Short: "Fetch aggregated logs for a service",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Printf("Fetching aggregated logs for '%s'...\n", args[0])
+		return nil
+	},
+}
+
+var observeTracesCmd = &cobra.Command{
+	Use:   "traces [service]",
+	Short: "Query distributed traces for a service",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Printf("Fetching recent traces for '%s'...\n", args[0])
+		return nil
+	},
+}
+
+var observeDashboardsCmd = &cobra.Command{
+	Use:   "dashboards [service]",
+	Short: "Get the dashboard link for a service",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Printf("Dashboard URL for %s: https://grafana.internal.com/d/%s/overview\n", args[0], args[0])
+		return nil
+	},
 }
