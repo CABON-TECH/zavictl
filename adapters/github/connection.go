@@ -15,6 +15,8 @@ type githubConnection struct {
 
 func (c *githubConnection) Execute(ctx context.Context, op provider.Operation) (provider.Result, error) {
 	switch op.Action {
+	case "sourcecontrol.create_repository":
+		return c.createRepository(ctx, op)
 	case "sourcecontrol.read_repository":
 		return c.readRepository(ctx, op)
 	case "cicd.trigger_workflow":
@@ -94,6 +96,39 @@ func (c *githubConnection) triggerWorkflow(ctx context.Context, op provider.Oper
 		Status: "success",
 		Outputs: map[string]any{
 			"message": "Workflow dispatched successfully",
+		},
+	}, nil
+}
+func (c *githubConnection) createRepository(ctx context.Context, op provider.Operation) (provider.Result, error) {
+	name, ok := op.Parameters["name"].(string)
+	if !ok {
+		return provider.Result{}, fmt.Errorf("missing parameter 'name'")
+	}
+	org, _ := op.Parameters["organization"].(string)
+	
+	repo := &githubapi.Repository{
+		Name: githubapi.String(name),
+	}
+	
+	if desc, ok := op.Parameters["description"].(string); ok {
+		repo.Description = githubapi.String(desc)
+	}
+	if private, ok := op.Parameters["private"].(bool); ok {
+		repo.Private = githubapi.Bool(private)
+	}
+
+	r, _, err := c.client.Repositories.Create(ctx, org, repo)
+	if err != nil {
+		return provider.Result{}, mapError(err)
+	}
+
+	return provider.Result{
+		Status: "success",
+		Outputs: map[string]any{
+			"id":          r.GetID(),
+			"name":        r.GetName(),
+			"full_name":   r.GetFullName(),
+			"url":         r.GetHTMLURL(),
 		},
 	}, nil
 }
