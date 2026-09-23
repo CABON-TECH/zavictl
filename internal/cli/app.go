@@ -7,13 +7,20 @@ import (
 	"path/filepath"
 	"time"
 
+	"zavictl/adapters/docker"
+	"zavictl/adapters/github"
+	"zavictl/adapters/opentofu"
+	"zavictl/adapters/prometheus"
+	"zavictl/adapters/terraform"
+	"zavictl/adapters/vault"
+	
 	"zavictl/pkg/credentials"
 	"zavictl/pkg/events"
 	"zavictl/pkg/execution"
 	"zavictl/pkg/policy"
+	"zavictl/pkg/provider"
 	"zavictl/pkg/state"
 	"zavictl/pkg/state/sqlite"
-	"zavictl/pkg/workflow"
 )
 
 type App struct {
@@ -22,6 +29,7 @@ type App struct {
 	Engine   execution.ExecutionEngine
 	Resolver credentials.CredentialResolver
 	Policy   policy.PolicyEngine
+	Registry *provider.Registry
 }
 
 func BootstrapApp() (*App, error) {
@@ -51,8 +59,17 @@ func BootstrapApp() (*App, error) {
 	// For now, no policies
 	policyEngine, _ := policy.NewCELEngine(bus, nil, nil)
 
-	// We need a proper StepRunner. For now we use a dummy one.
-	runner := &dummyRunner{}
+	// Initialize Provider Registry
+	registry := provider.NewRegistry()
+	registry.Register("github", github.NewProvider(resolver))
+	registry.Register("docker", docker.NewProvider(resolver))
+	registry.Register("opentofu", opentofu.NewProvider(resolver))
+	registry.Register("terraform", terraform.NewProvider(resolver))
+	registry.Register("vault", vault.NewProvider(resolver))
+	registry.Register("prometheus", prometheus.NewProvider(resolver))
+
+	// Replace dummy runner with actual AdapterRunner
+	runner := execution.NewAdapterRunner(registry, resolver)
 	engine := execution.NewEngine(store, runner, policyEngine)
 
 	return &App{
@@ -61,12 +78,6 @@ func BootstrapApp() (*App, error) {
 		Engine:   engine,
 		Resolver: resolver,
 		Policy:   policyEngine,
+		Registry: registry,
 	}, nil
-}
-
-type dummyRunner struct{}
-func (r *dummyRunner) Run(ctx context.Context, step workflow.StepDefinition) (execution.StepResult, error) {
-	fmt.Printf("[RUNNER] Executing step: %s (Action: %s)\n", step.Name, step.Action)
-	time.Sleep(200 * time.Millisecond) // simulate work
-	return execution.StepResult{Success: true}, nil
 }
