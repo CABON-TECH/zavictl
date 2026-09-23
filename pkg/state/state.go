@@ -25,6 +25,7 @@ type StateStore interface {
 	Put(ctx context.Context, ref models.ResourceRef, record StateRecord, expectedVersion int) error
 	History(ctx context.Context, ref models.ResourceRef) ([]StateRecord, error)
 	Lock(ctx context.Context, ref models.ResourceRef, holder string, ttl time.Duration) (LockToken, error)
+	List(ctx context.Context, kind string) ([]StateRecord, error)
 	Unlock(ctx context.Context, token LockToken) error
 }
 

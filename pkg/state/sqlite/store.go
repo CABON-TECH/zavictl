@@ -19,7 +19,7 @@ type SQLiteStore struct {
 }
 
 func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
-	db, err := sql.Open("sqlite", dbPath)
+	db, err := sql.Open("sqlite", dbPath+"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)")
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +28,12 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 		return nil, err
 	}
 
-	return &SQLiteStore{db: db}, nil
+	store := &SQLiteStore{db: db}
+	if err := store.ensureEventsTable(); err != nil {
+		return nil, err
+	}
+
+	return store, nil
 }
 
 func initSchema(db *sql.DB) error {

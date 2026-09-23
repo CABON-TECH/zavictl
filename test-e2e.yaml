@@ -1,0 +1,20 @@
+name: acceptance-test
+version: v1
+steps:
+  - name: 01_dummy_no_op
+    action: docker.runtime.list
+  
+  - name: 02_check_vault
+    action: vault.secrets.list
+    depends_on: ["01_dummy_no_op"]
+    
+  - name: 03_provision_infra
+    action: terraform.infra.plan
+    depends_on: ["02_check_vault"]
+    
+  - name: 04_auth_failure_demo
+    action: github.sourcecontrol.read_repository
+    depends_on: ["03_provision_infra"]
+    inputs:
+      owner: '"torvalds"'
+      repo: '"linux"'

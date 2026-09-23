@@ -1,0 +1,8 @@
+name: real-providers-test
+version: v1
+steps:
+  - name: gh_read
+    action: github.sourcecontrol.read_repository
+    inputs:
+      owner: '"torvalds"'
+      repo: '"linux"'
