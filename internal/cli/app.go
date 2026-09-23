@@ -58,7 +58,9 @@ func BootstrapApp() (*App, error) {
 			return "", time.Time{}, fmt.Errorf("failed to list credentials: %v", err)
 		}
 		
-		for _, rec := range records {
+		// Iterate backwards to get the most recently added credential
+		for i := len(records) - 1; i >= 0; i-- {
+			rec := records[i]
 			if rec.Data["provider"].(string) == ref.Provider {
 				return rec.Data["token"].(string), time.Now().Add(24 * time.Hour), nil
 			}
@@ -68,8 +70,9 @@ func BootstrapApp() (*App, error) {
 	}
 	resolver := credentials.NewResolver(bus, fetchFunc)
 
-	// For now, no policies
-	policyEngine, _ := policy.NewCELEngine(bus, nil, nil)
+	// Load active policies from SQLite and feed them into the CEL engine
+	policyDefs, _ := loadPoliciesFromStore(context.Background(), store)
+	policyEngine, _ := policy.NewCELEngine(bus, policyDefs, nil)
 
 	// Initialize Provider Registry
 	registry := provider.NewRegistry()
@@ -92,4 +95,42 @@ func BootstrapApp() (*App, error) {
 		Policy:   policyEngine,
 		Registry: registry,
 	}, nil
+}
+
+// loadPoliciesFromStore reads active Policy records from SQLite and converts them to PolicyDefinitions.
+func loadPoliciesFromStore(ctx context.Context, store state.StateStore) ([]policy.PolicyDefinition, error) {
+	records, err := store.List(ctx, "Policy")
+	if err != nil {
+		return nil, err
+	}
+
+	var defs []policy.PolicyDefinition
+	for _, rec := range records {
+		name, _ := rec.Data["name"].(string)
+		rule, _ := rec.Data["rule"].(string)
+		enforcement, _ := rec.Data["enforcement"].(string)
+		errMsg, _ := rec.Data["error_message"].(string)
+		status, _ := rec.Data["status"].(string)
+
+		if status != "active" || rule == "" {
+			continue
+		}
+
+		if enforcement == "" {
+			enforcement = "block"
+		}
+
+		defs = append(defs, policy.PolicyDefinition{
+			Name: name,
+			Rules: []policy.PolicyRule{
+				{
+					Name:        name,
+					Description: errMsg,
+					Expression:  rule,
+					Severity:    enforcement,
+				},
+			},
+		})
+	}
+	return defs, nil
 }

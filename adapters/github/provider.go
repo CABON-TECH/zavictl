@@ -2,6 +2,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"zavictl/pkg/credentials"
@@ -88,6 +89,7 @@ func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	
 	providerReq := &credentials.ProviderRequest{Header: clone.Header}
 	t.cred.Apply(providerReq)
+	fmt.Println("Header applied:", clone.Header.Get("Authorization") != "")
 
 	return t.base.RoundTrip(clone)
 }

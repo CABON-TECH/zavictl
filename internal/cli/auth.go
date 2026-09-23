@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"syscall"
 
 	"github.com/spf13/cobra"
@@ -31,7 +32,7 @@ var authLoginCmd = &cobra.Command{
 		}
 		fmt.Println()
 		
-		tokenStr := string(byteToken)
+		tokenStr := strings.TrimSpace(string(byteToken))
 		if tokenStr == "" {
 			return fmt.Errorf("token cannot be empty")
 		}

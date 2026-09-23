@@ -104,3 +104,29 @@ func NewCredential(provider, token, owner string) *Credential {
 		Token:    token,
 	}
 }
+
+// Policy represents a governance rule using CEL.
+type Policy struct {
+	Resource
+	Rule         string `json:"rule"`
+	Enforcement  string `json:"enforcement"` // e.g., "block", "audit"
+	ErrorMessage string `json:"error_message"`
+}
+
+func NewPolicy(name, rule, enforcement, errMsg, owner string) *Policy {
+	now := time.Now().UTC()
+	return &Policy{
+		Resource: Resource{
+			ID:          GenerateID(),
+			Kind:        "Policy",
+			Name:        name,
+			Owner:       owner,
+			CreatedAt:   now,
+			UpdatedAt:   now,
+			Status:      "active",
+		},
+		Rule:         rule,
+		Enforcement:  enforcement,
+		ErrorMessage: errMsg,
+	}
+}

@@ -240,13 +240,23 @@ func (e *engineImpl) runWorkflow(ctx context.Context, id ExecutionID, wf workflo
 	}()
 
 	if e.policy != nil {
+		// Build a representative operation using the first step's action
+		// to allow rules to match on op.Action (e.g. "github.cicd.trigger_workflow")
+		firstAction := "workflow.execute"
+		if len(wf.Steps) > 0 {
+			firstAction = wf.Steps[0].Action
+		}
 		op := provider.Operation{
-			Action: "workflow.execute",
+			Action:     firstAction,
 			Parameters: map[string]any{"workflow_name": wf.Name},
 		}
 		dec, err := e.policy.Evaluate(ctx, op, policy.Scope{Project: "default"})
 		if err != nil || !dec.Allowed {
-			_ = e.transition(ctx, id, StatusFailed, "Policy authorization failed")
+			msg := "Policy authorization failed"
+			if len(dec.Violations) > 0 {
+				msg = fmt.Sprintf("Policy blocked: %s", dec.Violations[0].Message)
+			}
+			_ = e.transition(ctx, id, StatusFailed, msg)
 			return
 		}
 	}
@@ -352,8 +362,17 @@ func (e *engineImpl) runWorkflow(ctx context.Context, id ExecutionID, wf workflo
 				
 				res, err := e.runner.Run(ctx, step)
 				if err != nil || !res.Success {
-					e.saveStepState(ctx, id, stepName, StepState{Status: "failed", Error: fmt.Sprintf("%v", err)})
-					errCh <- fmt.Errorf("step %s failed: %v", stepName, err)
+					var errStr string
+					if err != nil {
+						errStr = err.Error()
+					} else if res.Error != nil {
+						errStr = res.Error.Error()
+					} else {
+						errStr = "unknown failure"
+					}
+					
+					e.saveStepState(ctx, id, stepName, StepState{Status: "failed", Error: errStr})
+					errCh <- fmt.Errorf("step %s failed: %s", stepName, errStr)
 					return
 				}
 				

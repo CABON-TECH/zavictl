@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"zavictl/pkg/execution"
+	"zavictl/pkg/models"
 	"zavictl/pkg/workflow"
 )
 
@@ -93,6 +94,15 @@ var deployStartCmd = &cobra.Command{
 				return err
 			}
 			if status == execution.StatusCompleted || status == execution.StatusFailed || status == execution.StatusCancelled {
+				if status == execution.StatusFailed {
+					// Try to pull the last_message for context
+					rec, ferr := appCtx.Store.Get(ctx, models.ResourceRef(fmt.Sprintf("Execution/%s", id)))
+					if ferr == nil {
+						if msg, ok := rec.Data["last_message"].(string); ok {
+							fmt.Printf("Reason: %s\n", msg)
+						}
+					}
+				}
 				fmt.Printf("Deployment finished with status: %s\n", status)
 				break
 			}
