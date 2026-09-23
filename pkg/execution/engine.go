@@ -91,6 +91,7 @@ func (e *engineImpl) Resume(ctx context.Context, id ExecutionID) error {
 	e.mu.Lock()
 	if _, exists := e.active[id]; exists {
 		e.mu.Unlock()
+		cancel()
 		return fmt.Errorf("workflow already running")
 	}
 	e.active[id] = cancel

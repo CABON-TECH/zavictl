@@ -164,7 +164,7 @@ func TestEngineApproval(t *testing.T) {
 
 	engine.SignalApproval(context.Background(), id, "step1")
 	
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(1500 * time.Millisecond) // Poll is 1s, wait 1.5s
 	
 	status, _ = engine.Status(context.Background(), id)
 	if status != StatusCompleted {
