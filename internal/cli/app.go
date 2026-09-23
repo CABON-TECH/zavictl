@@ -9,11 +9,12 @@ import (
 
 	"zavictl/adapters/docker"
 	"zavictl/adapters/github"
+	"zavictl/adapters/kubernetes"
 	"zavictl/adapters/opentofu"
 	"zavictl/adapters/prometheus"
 	"zavictl/adapters/terraform"
 	"zavictl/adapters/vault"
-	
+
 	"zavictl/pkg/credentials"
 	"zavictl/pkg/events"
 	"zavictl/pkg/execution"
@@ -62,7 +63,7 @@ func BootstrapApp() (*App, error) {
 		if err != nil {
 			return "", time.Time{}, fmt.Errorf("failed to list credentials: %v", err)
 		}
-		
+
 		// Iterate backwards to get the most recently added credential
 		for i := len(records) - 1; i >= 0; i-- {
 			rec := records[i]
@@ -70,7 +71,7 @@ func BootstrapApp() (*App, error) {
 				return rec.Data["token"].(string), time.Now().Add(24 * time.Hour), nil
 			}
 		}
-		
+
 		return "", time.Time{}, fmt.Errorf("no credential found for provider %s, please run 'zavictl auth login %s'", ref.Provider, ref.Provider)
 	}
 	resolver := credentials.NewResolver(bus, fetchFunc)
@@ -86,6 +87,7 @@ func BootstrapApp() (*App, error) {
 	registry.Register("opentofu", opentofu.NewProvider(resolver))
 	registry.Register("terraform", terraform.NewProvider(resolver))
 	registry.Register("vault", vault.NewProvider(resolver))
+	registry.Register("kubernetes", kubernetes.NewProvider(resolver))
 	registry.Register("prometheus", prometheus.NewProvider(resolver))
 
 	// Replace dummy runner with actual AdapterRunner
