@@ -25,6 +25,8 @@ type ExecutionEngine interface {
 	Submit(ctx context.Context, wf workflow.WorkflowDefinition) (ExecutionID, error)
 	Cancel(ctx context.Context, id ExecutionID) error
 	Status(ctx context.Context, id ExecutionID) (ExecutionStatus, error)
+	Resume(ctx context.Context, id ExecutionID) error
+	SignalApproval(ctx context.Context, id ExecutionID, stepName string) error
 }
 
 // StepResult represents the outcome of executing a step.
