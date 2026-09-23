@@ -1,0 +1,24 @@
+name: terminal-demo
+version: v1
+steps:
+  - name: validate
+    action: code.lint
+  - name: build_artifact
+    action: artifact.build
+    depends_on:
+      - validate
+  - name: security_scan
+    action: code.scan
+    depends_on:
+      - validate
+  - name: human_approval
+    action: manual.approve
+    depends_on:
+      - build_artifact
+      - security_scan
+    approval:
+      required: true
+  - name: deploy_prod
+    action: runtime.deploy
+    depends_on:
+      - human_approval
