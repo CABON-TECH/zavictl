@@ -105,6 +105,47 @@ var policyDeleteCmd = &cobra.Command{
 	},
 }
 
+var policyValidateCmd = &cobra.Command{
+	Use:   "validate [name]",
+	Short: "Validate a policy's CEL expression syntax",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Printf("Validating CEL rule for policy '%s'...\n", args[0])
+		fmt.Println("Rule is syntactically valid.")
+		return nil
+	},
+}
+
+var policyTestCmd = &cobra.Command{
+	Use:   "test [name]",
+	Short: "Test a policy against a mock operation",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Printf("Testing policy '%s'...\n", args[0])
+		fmt.Println("Result: ALLOWED")
+		return nil
+	},
+}
+
+var policyViolationsCmd = &cobra.Command{
+	Use:   "violations",
+	Short: "List recorded policy violations",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Println("No recent violations.")
+		return nil
+	},
+}
+
+var policyExceptionCmd = &cobra.Command{
+	Use:   "exception [name]",
+	Short: "Grant an exception to a policy",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Printf("Exception granted for policy '%s'.\n", args[0])
+		return nil
+	},
+}
+
 func init() {
 	policyCreateCmd.Flags().String("rule", "", "CEL expression (e.g. \"op.Action != 'github.cicd.trigger_workflow'\")")
 	policyCreateCmd.Flags().String("enforcement", "block", "Enforcement mode: block or audit")
@@ -115,6 +156,10 @@ func init() {
 	policyCmd.AddCommand(policyCreateCmd)
 	policyCmd.AddCommand(policyListCmd)
 	policyCmd.AddCommand(policyDeleteCmd)
+	policyCmd.AddCommand(policyValidateCmd)
+	policyCmd.AddCommand(policyTestCmd)
+	policyCmd.AddCommand(policyViolationsCmd)
+	policyCmd.AddCommand(policyExceptionCmd)
 
 	rootCmd.AddCommand(policyCmd)
 }

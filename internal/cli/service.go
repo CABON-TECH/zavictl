@@ -70,6 +70,108 @@ var serviceListCmd = &cobra.Command{
 	},
 }
 
+var serviceShowCmd = &cobra.Command{
+	Use:   "show [name]",
+	Short: "Show service details",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		records, err := appCtx.Store.List(context.Background(), "Service")
+		if err != nil {
+			return err
+		}
+		for _, rec := range records {
+			if rec.Data["name"].(string) == args[0] {
+				fmt.Printf("Name:           %v\n", rec.Data["name"])
+				fmt.Printf("ID:             %v\n", rec.Data["id"])
+				fmt.Printf("Owner:          %v\n", rec.Data["owner"])
+				fmt.Printf("Repository URL: %v\n", rec.Data["repository_url"])
+				fmt.Printf("Status:         %v\n", rec.Data["status"])
+				fmt.Printf("Created:        %v\n", rec.Data["created_at"])
+				return nil
+			}
+		}
+		return fmt.Errorf("service '%s' not found", args[0])
+	},
+}
+
+var serviceValidateCmd = &cobra.Command{
+	Use:   "validate [name]",
+	Short: "Validate a service's registration",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		records, err := appCtx.Store.List(context.Background(), "Service")
+		if err != nil {
+			return err
+		}
+		for _, rec := range records {
+			if rec.Data["name"].(string) == args[0] {
+				if rec.Data["repository_url"] == nil || rec.Data["repository_url"].(string) == "" {
+					return fmt.Errorf("validation failed: service has no repository_url")
+				}
+				fmt.Printf("Service '%s' is valid.\n", args[0])
+				return nil
+			}
+		}
+		return fmt.Errorf("service '%s' not found", args[0])
+	},
+}
+
+var serviceDepsCmd = &cobra.Command{
+	Use:   "dependencies [name]",
+	Short: "List declared dependencies of a service",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		records, err := appCtx.Store.List(context.Background(), "Service")
+		if err != nil {
+			return err
+		}
+		for _, rec := range records {
+			if rec.Data["name"].(string) == args[0] {
+				deps, _ := rec.Data["dependencies"].([]any)
+				if len(deps) == 0 {
+					fmt.Printf("Service '%s' has no declared dependencies.\n", args[0])
+					return nil
+				}
+				fmt.Printf("Dependencies of '%s':\n", args[0])
+				for _, d := range deps {
+					fmt.Printf("  - %v\n", d)
+				}
+				return nil
+			}
+		}
+		return fmt.Errorf("service '%s' not found", args[0])
+	},
+}
+
+var serviceOwnerCmd = &cobra.Command{
+	Use:   "owner [name]",
+	Short: "Get or set the owner of a service",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		set, _ := cmd.Flags().GetString("set")
+		records, err := appCtx.Store.List(context.Background(), "Service")
+		if err != nil {
+			return err
+		}
+		for _, rec := range records {
+			if rec.Data["name"].(string) == args[0] {
+				if set == "" {
+					fmt.Printf("Owner of '%s': %v\n", args[0], rec.Data["owner"])
+					return nil
+				}
+				rec.Data["owner"] = set
+				ref := models.ResourceRef(fmt.Sprintf("Service/%s", rec.Data["id"]))
+				if err := appCtx.Store.Put(context.Background(), ref, rec, rec.Version); err != nil {
+					return fmt.Errorf("failed to update owner: %v", err)
+				}
+				fmt.Printf("Owner of '%s' updated to '%s'.\n", args[0], set)
+				return nil
+			}
+		}
+		return fmt.Errorf("service '%s' not found", args[0])
+	},
+}
+
 func init() {
 	serviceCreateCmd.Flags().StringP("description", "d", "", "Service description")
 	serviceCreateCmd.Flags().String("owner", "", "Service owner")
@@ -77,8 +179,14 @@ func init() {
 	serviceCreateCmd.Flags().String("env", "", "Environment Ref ID")
 	serviceCreateCmd.MarkFlagRequired("repo")
 
+	serviceOwnerCmd.Flags().String("set", "", "New owner value")
+
 	serviceCmd.AddCommand(serviceCreateCmd)
 	serviceCmd.AddCommand(serviceListCmd)
+	serviceCmd.AddCommand(serviceShowCmd)
+	serviceCmd.AddCommand(serviceValidateCmd)
+	serviceCmd.AddCommand(serviceDepsCmd)
+	serviceCmd.AddCommand(serviceOwnerCmd)
 
 	rootCmd.AddCommand(serviceCmd)
 }
